@@ -32,9 +32,7 @@ def start_parser(d):
             for td in tr_tags:
                 result += td.text + ' | '
             print result
-            print '======================================='
-            return
-
+    print '======================================='
 
 def click_page_number(d, page):
     paging = d.find_element_by_class_name('paging')
