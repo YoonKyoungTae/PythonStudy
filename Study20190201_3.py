@@ -6,14 +6,16 @@
 # 셀레니움 임포트
 # ==========================#
 
-# 결과 : 크롤링 된 데이터를 하나의 리스트로 관리하기
+# 결과 : 가공된 데이터를 json 형태로 저장한다.
 
+import requests
+import json
 from selenium import webdriver
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchElementException
 
 global_page_progress = 0
-
+global_error_count = 0
 def start_parser(d, item_list):
     # 기존 크롤링 순서와 동일
 
@@ -33,10 +35,33 @@ def start_parser(d, item_list):
             item_list.append({
                 'region' : td[0].text,
                 'name' : td[1].text,
-                'address' : td[2].text
+                'address' : td[2].text,
+                'location' : get_location(td[2].text)
             })
 
     return item_list
+
+def get_location(address):
+
+    global global_error_count
+
+    if ',' in address:
+        address = address.split(',')
+        address = address[0]
+
+    kakao_api_url = 'https://dapi.kakao.com/v2/local/search/address.json'
+    query = '?query='
+    headers = {'Authorization': 'KakaoAK 56165e9801eac8d7e760bd16a12304f1'}
+
+    res = requests.get(kakao_api_url + query + address, headers=headers)
+    json_data = res.json()
+    documents = json_data['documents']
+
+    try:
+        return [documents[0]['x'], documents[0]['y']]
+    except IndexError:
+        global_error_count += 1
+        return ['0', '0']
 
 def click_page_number(d, page):
     paging = d.find_element_by_class_name('paging')
@@ -89,7 +114,16 @@ while doMoveNextPage:
         doMoveNextPage = True
     except NoSuchElementException:
         doMoveNextPage = False
-        print '크롤링 종료'
 
-for item in items:
-    print '['+ item['region'] + ']' + item['name'] + ', ' + item['address']
+# for item in items:
+#     print '['+ item['region'] + ']' + item['name'] + ', ' + item['address'] + ' ## ' + item['location'][0] + ', ' + item['location'][1]
+
+print '# 크롤링 종료'
+print '# 아이템 개수 : ' + str(len(items))
+print '# Error Count : ' + str(global_error_count)
+
+data = json.dumps(items, indent=4, ensure_ascii=False).encode('utf-8')
+
+f = open('json.txt', 'w')
+f.write(data)
+f.close()
